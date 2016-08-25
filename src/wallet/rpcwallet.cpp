@@ -592,11 +592,8 @@ void AbandonClaim(const CTxDestination &address, CAmount nAmount, CWalletTx& wtx
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of a wallet.dat and coins were spent in the copy but not marked as spent here.");
 }
 
-UniValue abandonwhatever(const UniValue& params, bool fHelp, const isminefilter filter, bool checkOther)
+UniValue abandonwhatever(const UniValue& params, bool fHelp, const isminefilter filter, bool dryrun)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
-        return NullUniValue;
-
     string type;
     if (filter == ISMINE_CLAIM)
         type = "claim";
@@ -644,29 +641,34 @@ UniValue abandonwhatever(const UniValue& params, bool fHelp, const isminefilter 
         {
             if (DecodeClaimScript(wtx.vout[i].scriptPubKey, op, vvchParams))
             {
-                if (!checkOther) {
+                if (!dryrun) {
                     EnsureWalletIsUnlocked();
                     AbandonClaim(address.Get(), nAmount, wtxNew, wtx, i);
                     return wtxNew.GetHash().GetHex();
                 }
                 else
                 {
-                    throw runtime_error("Error: address is a "+type+" script -- use abandon"+type);
+                    return true;
                 }
             }
         }
     }
 
-    if (!checkOther)
-        abandonwhatever(params, false, (filter==ISMINE_CLAIM ? ISMINE_SUPPORT : ISMINE_CLAIM), true);
-
-    throw runtime_error("Error: The given transaction contains no claim scripts owned by this wallet");
-
+    return false;
 }
 
 UniValue abandonclaim(const UniValue& params, bool fHelp)
 {
-    return abandonwhatever(params, fHelp, ISMINE_CLAIM, false);
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (CWalletTx wtxNew = abandonwhatever(params, fHelp, ISMINE_CLAIM, false))
+        return wtxNew.GetHash().GetHex();
+
+    if (abandonwhatever(params, false, ISMINE_SUPPORT, true))
+        throw runtime_error("Error: address is a support script -- use abandonsupport");
+
+    throw runtime_error("Error: The given transaction contains no claim scripts owned by this wallet");
 }
 
 
@@ -889,7 +891,16 @@ UniValue supportclaim(const UniValue& params, bool fHelp)
 
 UniValue abandonsupport(const UniValue& params, bool fHelp)
 {
-    return abandonwhatever(params, fHelp, ISMINE_SUPPORT, false);
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (CWalletTx wtxNew = abandonwhatever(params, fHelp, ISMINE_SUPPORT, false))
+        return wtxNew.GetHash().GetHex();
+
+    if (abandonwhatever(params, false, ISMINE_CLAIM, true))
+        throw runtime_error("Error: address is a claim script -- use abandonclaim");
+
+    throw runtime_error("Error: The given transaction contains no support scripts owned by this wallet");
 }
 
 
