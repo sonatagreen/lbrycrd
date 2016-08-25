@@ -660,7 +660,7 @@ UniValue abandonwhatever(const UniValue& params, bool fHelp, const isminefilter 
     if (!checkOther)
         abandonwhatever(params, false, (filter==ISMINE_CLAIM ? ISMINE_SUPPORT : ISMINE_CLAIM), true);
 
-    throw runtime_error("Error: The given transaction contains no claim scripts owned by this wallet");
+    throw runtime_error("Error: The given transaction contains no " + type + " scripts owned by this wallet");
 
 }
 
