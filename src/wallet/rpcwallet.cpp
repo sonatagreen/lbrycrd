@@ -597,23 +597,15 @@ UniValue abandonwhatever(const UniValue& params, bool fHelp, const isminefilter 
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    string type, wrongType;
+    string type;
     if (filter == ISMINE_CLAIM)
-    {
         type = "claim";
-        wrongType = "support";
-    }
     else if (filter == ISMINE_SUPPORT)
-    {
         type = "support";
-        wrongType = "claim";
-    }
     else
-    {
         assert(false);
         // TODO: replace this with a useful error message, like:
         // "abandonwhatever received unexpected filter: "+filter
-    }
 
     if (fHelp || params.size() != 3)
         throw runtime_error(
@@ -659,13 +651,14 @@ UniValue abandonwhatever(const UniValue& params, bool fHelp, const isminefilter 
                 }
                 else
                 {
-                    throw runtime_error("Error: address is a "+wrongType+" script -- use abandon"+wrongType);
+                    throw runtime_error("Error: address is a "+type+" script -- use abandon"+type);
                 }
             }
         }
     }
 
-    abandonwhatever(params, false, filter, true);
+    if (!checkOther)
+        abandonwhatever(params, false, (filter==ISMINE_CLAIM ? ISMINE_SUPPORT : ISMINE_CLAIM), true);
 
     throw runtime_error("Error: The given transaction contains no claim scripts owned by this wallet");
 
